@@ -55,7 +55,7 @@ pub async fn get_book(cookie: &str, id: u32) -> Result<Book, ComicError> {
         let ep = &ep_list[i as usize];
         chapter_list.push(Chapter::new(
             ep["id"].to_string().parse::<u32>().unwrap(),
-            ep["ord"].to_string().parse::<u32>().unwrap(),
+            ep["ord"].to_string(),
             ep["title"].to_string(),
             ep["is_locked"].to_string().parse::<bool>().unwrap(),
         ));

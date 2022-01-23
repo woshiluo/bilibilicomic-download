@@ -13,12 +13,23 @@ struct Args {
 
     #[clap(long)]
     dir: String,
+
+    #[clap(long)]
+    from: u32,
+
+    #[clap(long)]
+    end: Option<u32>,
 }
 
 #[tokio::main]
 async fn main() {
     use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
     let args = Args::parse();
+
+    let m = MultiProgress::new();
+    let sty = ProgressStyle::default_bar()
+        .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}")
+        .progress_chars("##-");
 
     let mut cookie = String::new();
 
@@ -33,15 +44,16 @@ async fn main() {
         .await
         .unwrap();
 
-    let m = MultiProgress::new();
-    let sty = ProgressStyle::default_bar()
-        .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}")
-        .progress_chars("##-");
+    let from = args.from;
+    let end = match args.end {
+        Some(val) => val,
+        None => book.get_total() - 1,
+    };
 
     let pb = m.add(ProgressBar::new(book.get_total() as u64));
     pb.set_style(sty.clone());
 
-    for i in 0..book.get_total() {
+    for i in from..=end {
         pb.set_message(format!("{}-{}", i + 1, book.get_chapter(i).get_title()));
         pb.inc(1);
 
@@ -55,16 +67,20 @@ async fn main() {
     let pb = m.add(ProgressBar::new(book.get_total() as u64));
     pb.set_style(sty);
 
+    let mut handles = Vec::new();
     for file in std::fs::read_dir(&args.dir).unwrap() {
         let file = file.unwrap().path();
-        pb.set_message(format!("Compressing {:?}", file.file_name()));
+        let pb = pb.clone();
 
-        bilibilicomic_download::archive_to_file(&file, format!("{}.cbz", file.display()))
-            .await
-            .unwrap();
-
-        pb.inc(1);
+        handles.push(tokio::spawn(async move {
+            bilibilicomic_download::archive_to_file(&file, format!("{}.cbz", file.display()))
+                .await
+                .unwrap();
+            pb.inc(1);
+        }));
     }
+
+    futures::future::join_all(handles).await;
 
     m.clear().unwrap();
 }

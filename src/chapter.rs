@@ -9,13 +9,13 @@ use crate::{download_to_file, get_header, ComicError};
 #[derive(Debug)]
 pub struct Chapter {
     id: u32,
-    chapter_id: u32,
+    chapter_id: String,
     title: String,
     locked: bool,
 }
 
 impl Chapter {
-    pub fn new(id: u32, chapter_id: u32, title: String, locked: bool) -> Chapter {
+    pub fn new(id: u32, chapter_id: String, title: String, locked: bool) -> Chapter {
         Chapter {
             id,
             chapter_id,
